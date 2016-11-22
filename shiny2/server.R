@@ -5,7 +5,7 @@ library("htmlwidgets")
 library("ggplot2")
 library("ggthemes")
 
-theGGPlot <- function(di, whiskers=TRUE, onX = "Number", unit = "ng/mL", logx=FALSE) {
+theGGPlot <- function(di, whiskers=TRUE, onX = "Number", unit = "ng/mL", logx=FALSE, smooth=FALSE) {
   if (is.null(di))
     return(NULL)
   pl <- ggplot(di, aes_string(x=onX, y="diff", color="absDiff")) 
@@ -21,8 +21,12 @@ theGGPlot <- function(di, whiskers=TRUE, onX = "Number", unit = "ng/mL", logx=FA
                        limits=c(min(-100,min(di$diff, na.rm=TRUE)),max(100, max(di$diff, na.rm=TRUE))))+
     scale_color_manual(values=c("black","red3"))+
     theme(legend.position="none", text=element_text(size=15))
+  if (smooth) 
+    pl <- pl + geom_smooth(se=FALSE, color="blue1", group=1, size=2, span=0.5, method="loess")
+
   if (onX == "Number") {
-    pl + xlab("Sample Number") + ggtitle("Difference vs. Sample Number")
+    pl + scale_x_continuous(expand = c(0,0), limits = c(0,1.2*max(di$Number))) + 
+      xlab("Sample Number") + ggtitle("Difference vs. Sample Number")
   } else {
     if (logx) 
       pl <- pl + scale_x_log10()
@@ -49,12 +53,12 @@ function(input, output) {
   
   output$ggPlotDiffNo <- renderPlot({
     di <- dataInput()
-    theGGPlot(di, whiskers = input$whiskers) 
+    theGGPlot(di, whiskers = input$whiskers, smooth = input$smooth) 
   })
   
   output$ggPlotDiffInit <- renderPlot({
     di <- dataInput()
-    theGGPlot(di, whiskers = input$whiskers, onX="Initial_Value", unit = input$unit, logx = input$logx) 
+    theGGPlot(di, whiskers = input$whiskers, onX="Initial_Value", unit = input$unit, logx = input$logx, smooth = input$smooth) 
   })
   
   output$ggPlotDiffECDF <- renderPlot({
@@ -67,7 +71,7 @@ function(input, output) {
       theme_bw() +
       geom_linerange(x=20, ymin=0, ymax=frac, linetype=2) +
       geom_hline(yintercept=frac, linetype=2, color="red3") +
-      geom_text(x=max(abs(di$diff))-1, y=frac, label=paste(round(100*frac,1), "% of samples \nwith difference < 20 %"), vjust=1.3, hjust=1, color="red", size=5) +
+      geom_text(x=max(abs(di$diff))-1, y=frac, label=paste(round(100*frac,1), "% of IRS \nwithin ± 20 %"), vjust=1.3, hjust=1, color="red", size=5) +
       scale_y_continuous(expand = c(0,0), breaks = round(c(seq(0,1,.1)),2), name="Samples in range [%]",labels = scales::percent) +
       scale_x_continuous(expand = c(0,0), breaks = seq(0,100,10), name="Absolute difference [%]") +
       theme(legend.position="none", text=element_text(size=15)) +
@@ -101,7 +105,7 @@ function(input, output) {
     pl <- ggplot(di, aes(Number, cumm)) 
     if (input$ciband != "none") {
       pl <- pl + geom_ribbon(aes(x=Number, ymin=CI1, ymax=CI2), fill="grey", alpha=0.5)
-      yname <- paste(yname, "+-", input$ciband)
+      yname <- paste(yname, "± CI:", input$ciband)
     } 
     pl <- pl +
       geom_point() +
