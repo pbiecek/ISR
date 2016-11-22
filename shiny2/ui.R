@@ -12,7 +12,8 @@ fluidPage(
                               '.xlsx'))),
     column(width = 2, 
            p("Other options:"),
-           checkboxInput("whiskers", label = "Whiskers", value = TRUE)),
+           checkboxInput("whiskers", label = "Whiskers", value = TRUE),
+           checkboxInput("logx", label = "Log values", value = FALSE)),
     column(width = 2, 
            textInput("unit", label = "Units", value = "[ng/mL]"),
            selectInput("ciband", label = "CI interval", choices = c("none", "50%", "90%"), selected = "50%"))

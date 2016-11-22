@@ -5,7 +5,7 @@ library("htmlwidgets")
 library("ggplot2")
 library("ggthemes")
 
-theGGPlot <- function(di, whiskers=TRUE, onX = "Number", unit = "ng/mL") {
+theGGPlot <- function(di, whiskers=TRUE, onX = "Number", unit = "ng/mL", logx=FALSE) {
   if (is.null(di))
     return(NULL)
   pl <- ggplot(di, aes_string(x=onX, y="diff", color="absDiff")) 
@@ -16,7 +16,7 @@ theGGPlot <- function(di, whiskers=TRUE, onX = "Number", unit = "ng/mL") {
     geom_point() + theme_bw() +
     geom_hline(yintercept=0, linetype=2) +
     geom_hline(yintercept=c(20,-20)) +
-    scale_y_continuous(breaks = c(seq(-100,100,20),range(round(di$diff))), name="Difference [%]",
+    scale_y_continuous(breaks = c(seq(-100,100,20)), name="Difference [%]",
                        expand = c(0,0),
                        limits=c(min(-100,min(di$diff, na.rm=TRUE)),max(100, max(di$diff, na.rm=TRUE))))+
     scale_color_manual(values=c("black","red3"))+
@@ -24,6 +24,8 @@ theGGPlot <- function(di, whiskers=TRUE, onX = "Number", unit = "ng/mL") {
   if (onX == "Number") {
     pl + xlab("Sample Number") + ggtitle("Difference vs. Sample Number")
   } else {
+    if (logx) 
+      pl <- pl + scale_x_log10()
     pl + xlab(paste("Initial Value",unit)) + ggtitle("Difference vs. Initial Value")
   }
 }
@@ -52,7 +54,7 @@ function(input, output) {
   
   output$ggPlotDiffInit <- renderPlot({
     di <- dataInput()
-    theGGPlot(di, whiskers = input$whiskers, onX="Initial_Value", unit = input$unit) 
+    theGGPlot(di, whiskers = input$whiskers, onX="Initial_Value", unit = input$unit, logx = input$logx) 
   })
   
   output$ggPlotDiffECDF <- renderPlot({
@@ -65,7 +67,7 @@ function(input, output) {
       theme_bw() +
       geom_linerange(x=20, ymin=0, ymax=frac, linetype=2) +
       geom_hline(yintercept=frac, linetype=2, color="red3") +
-      geom_text(x=max(abs(di$diff))-1, y=frac, label=paste(round(100*frac,1), "% of samples \nwith difference < 20 %"), vjust=1.3, hjust=1, color="red", size=6) +
+      geom_text(x=max(abs(di$diff))-1, y=frac, label=paste(round(100*frac,1), "% of samples \nwith difference < 20 %"), vjust=1.3, hjust=1, color="red", size=5) +
       scale_y_continuous(expand = c(0,0), breaks = round(c(seq(0,1,.1)),2), name="Samples in range [%]",labels = scales::percent) +
       scale_x_continuous(expand = c(0,0), breaks = seq(0,100,10), name="Absolute difference [%]") +
       theme(legend.position="none", text=element_text(size=15)) +
