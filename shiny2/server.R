@@ -54,6 +54,10 @@ theGGPlot <- function(di, whiskers=TRUE, onX = "Number", unit = "ng/mL", logx=FA
 function(input, output) {
   # get data
   dataInput <- reactive({
+    if (input$button) {
+      load("df_sample.rda")
+      return(df)
+    }
     inFile <- input$file1
     if (is.null(inFile))
       return(NULL)
