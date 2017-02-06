@@ -6,12 +6,13 @@ fluidPage(
   fluidRow(class = "myRow1",
     column(width = 4, h2("Incurred Sample Reanalysis"), p("Link to the article, contact email")),
     column(width = 4,
-           fileInput('file1', 'Upload an XLSX or CSV file',
+           checkboxInput("button",label = "Use and example data"),
+           fileInput('file1', 'Or upload your data in XLSX or CSV file',
                      accept=c('.csv', 'application/xlsx',
                               'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                               '.xlsx')),
            br(),
-             downloadLink('downloadData', 'Download the onepager')
+           downloadLink('downloadData', 'Download the onepager')
            ),
     column(width = 2,
            p("Other options:"),
@@ -22,7 +23,7 @@ fluidPage(
     column(width = 2,
            textInput("unit", label = "Units", value = "[ng/mL]"),
            selectInput("ciband", label = "CI interval", choices = c("none", "50%", "90%"), selected = "50%"),
-           checkboxInput("showex", label = "Show extremes", value = TRUE))
+           checkboxInput("showex", label = "Extreme samples", value = TRUE))
   ),
   fluidRow(
     column(width = 4, plotOutput('ggPlotISR')),
