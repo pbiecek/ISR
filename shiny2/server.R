@@ -14,6 +14,8 @@ theGGPlot <- function(di, whiskers=TRUE, onX = "Number", unit = "ng/mL", logx=FA
   if (onX != "Number" & bland) {
       di$Initial_Value = di$Average
   }
+  vv <- c("black","red3")
+  if (all(di$absDiff)) vv <- "red3"
 
   pl <- ggplot(di, aes_string(x=onX, y="diff", color="absDiff"))
   if (whiskers)
@@ -23,29 +25,32 @@ theGGPlot <- function(di, whiskers=TRUE, onX = "Number", unit = "ng/mL", logx=FA
     geom_point() + theme_bw() +
     geom_hline(yintercept=0, linetype=2) +
     geom_hline(yintercept=c(20,-20)) +
-    scale_y_continuous(breaks = c(seq(-100,100,20)), name="Difference [%]",
+    scale_y_continuous(breaks = c(seq(-200,200,20)), name="% difference [%]",
                        expand = c(0,0),
                        limits=c(min(-100,min(di$diff, na.rm=TRUE)),max(100, max(di$diff, na.rm=TRUE))))+
-    scale_color_manual(values=c("black","red3"))+
+    scale_color_manual(values=vv)+
     theme(legend.position="none", text=element_text(size=15))
   if (smooth)
-    pl <- pl + geom_smooth(se=FALSE, color="blue1", group=1, size=2, span=0.5, method="loess")
+    pl <- pl + geom_smooth(se=FALSE, color="blue1", group=1, size=2,method.args=list(degree = 1), span=0.5, method="loess")
   if (showex) {
     di2 <- di[c(which.min(di$diff), which.max(di$diff)),]
     pl <- pl + geom_text(data=di2, aes(label=Number), color="red2", group=1, vjust=c(1.5,-0.5))
   }
 
   if (onX == "Number") {
-    pl + scale_x_continuous(expand = c(0,0), limits = c(0,1.2*max(di$Number))) +
-      xlab("Sample Number") + ggtitle("Difference vs. Sample Number")
+    pl <- pl + scale_x_continuous(expand = c(0,0), limits = c(0,1.2*max(di$Number))) +
+      xlab("sample number") + ggtitle("Difference vs. Sample Number")
   } else {
     # input$bland
-    if (logx)
-      pl <- pl + scale_x_log10()
-    if (bland) {
-      pl <- pl + xlab(paste("Mean Value",unit)) + ggtitle("Difference vs. Mean Value")
+    if (logx) {
+      pl <- pl + scale_x_log10(expand = c(0,0))
     } else {
-      pl <- pl + xlab(paste("Initial Value",unit)) + ggtitle("Difference vs. Initial Value")
+      pl <- pl + scale_x_continuous(expand = c(0,0), limits = c(0,1.1*max(di$Initial_Value)))
+    }
+    if (bland) {
+      pl <- pl + xlab(paste("mean value",unit)) + ggtitle("Difference vs. Mean Value")
+    } else {
+      pl <- pl + xlab(paste("initial value",unit)) + ggtitle("Difference vs. Initial Value")
     }
   }
   pl
@@ -86,14 +91,17 @@ function(input, output) {
 
   prepareGgPlotDiffECDF <- function(di) {
     frac <- mean(abs(di$diff)<=20)
+    if (frac == 0) frac <- 0.00004
+    vj <- 1.3
+    if (frac < 0.5) vj <- -0.3
     pl <- ggplot(di, aes(abs(diff))) +
       stat_ecdf() +
       theme_bw() +
       geom_linerange(x=20, ymin=0, ymax=frac, linetype=2) +
       geom_hline(yintercept=frac, linetype=2, color="red3") +
-      geom_text(x=max(abs(di$diff))-1, y=frac, label=paste(round(100*frac,1), "% of IRS \nwithin ± 20 %"), vjust=1.3, hjust=1, color="red", size=5) +
-      scale_y_continuous(expand = c(0,0), breaks = round(c(seq(0,1,.1)),2), name="Samples in range [%]",labels = scales::percent) +
-      scale_x_continuous(expand = c(0,0), breaks = seq(0,100,10), name="Absolute difference [%]") +
+      geom_text(x=min(max(abs(di$diff))-1, 45), y=frac, label=paste(round(frac*100,1), "% of ISR \nwithin ± 20 %"), vjust=vj, hjust=1, color="red", size=5) +
+      scale_y_continuous(expand = c(0,0), limits = c(0,1), labels=seq(0,100,10),breaks = round(c(seq(0,1,.1)),2), name="samples in range [%]") +
+      scale_x_continuous(expand = c(0,0), limits = c(0, 60), breaks = seq(0,200,10), name="absolute % difference [%]") +
       theme(legend.position="none", text=element_text(size=15)) +
       ggtitle("Distribution of absolute differences")
     pl
@@ -114,7 +122,7 @@ function(input, output) {
      pdf(con, width = 12, height = 18)
      if (is.null(di)) {
        grid::grid.newpage()
-       grid::grid.text('Please, first upload a file with IRS data')
+       grid::grid.text('Please, first upload a file with ISR data')
      } else {
        pl1 <- prepareGgPlotISR(di, input$ciband)
        pl2 <- theGGPlot(di, whiskers = input$whiskers, smooth = input$smooth, showex = input$showex)
@@ -142,18 +150,18 @@ function(input, output) {
     di$CI1 <- CI[,1]
     di$CI2 <- CI[,2]
     yname <- "ISR [%]"
-    pl <- ggplot(di, aes(Number, cumm))
+    pl <- ggplot(di, aes(Number, 100*cumm))
     if (input$ciband != "none") {
-      pl <- pl + geom_ribbon(aes(x=Number, ymin=CI1, ymax=CI2), fill="grey", alpha=0.5)
+      pl <- pl + geom_ribbon(aes(x=Number, ymin=100*CI1, ymax=100*CI2), fill="grey", alpha=0.5)
       yname <- paste(yname, "± CI:", input$ciband)
     }
     pl <- pl +
       geom_point() +
       geom_line() +
       theme_bw() +
-      geom_text(x=max(di$Number), y=frac, label=paste(round(100*frac,1), "%"), vjust=1, hjust=-0.1, color="red", size=6) +
+      geom_text(x=max(di$Number), y=100*frac, label=paste(round(100*frac,1), "%"), vjust=2*frac - 1, hjust=-0.1, color="red", size=6) +
       geom_hline(yintercept=0.666, linetype=2) +
-      scale_y_continuous(limits=c(0,1), expand = c(0,0), breaks = round(c(seq(0,1,.2),0.666),2), name=yname,labels = scales::percent) +
+      scale_y_continuous(limits=c(0,100), expand = c(0,0), breaks = round(100*c(seq(0,1,.2),0.666),0), name=yname) +
       scale_x_continuous(expand = c(0,0), limits = c(0,1.2*max(di$Number)), name="Sample Number") +
       theme(legend.position="none", text=element_text(size=15))+
       ggtitle("Cummulative ISR plot")
@@ -163,7 +171,7 @@ function(input, output) {
   output$ggPlotISR <- renderPlot({
     di <- dataInput()
     if (is.null(di)) {
-      return(grid::grid.text('Please, first upload a file with IRS data'))
+      return(grid::grid.text('Please, first upload a file with ISR data'))
     }
 
     prepareGgPlotISR(di, input$ciband)
@@ -171,14 +179,17 @@ function(input, output) {
 
   prepareGgPlotHist <- function(di) {
     pl <- ggplot(di, aes(diff)) +
-      geom_histogram(breaks=seq(-100,100,10), col="white") +
+      geom_histogram(breaks=c(-200, seq(-40,40,10), 200), col="white") +
       geom_vline(xintercept=20, linetype=2, col="red3") +
       geom_vline(xintercept=-20, linetype=2, col="red3") +
       theme_bw() +
       scale_fill_manual(values=c("black","red3"))+
       scale_y_continuous(name="Number of Samples",expand = c(0,0)) +
-      scale_x_continuous(name="Difference [%]", expand = c(0,0), breaks = seq(-100, 100, 20)) +
+      scale_x_continuous(name="% difference [%]", expand = c(0,0), 
+                         breaks = c(-47,seq(-40, 40, 10), 47),
+                         labels = c("< -40", seq(-40, 40, 10), "> 40")) +
       theme(legend.position="none", text=element_text(size=15)) +
+      coord_cartesian(xlim = c(-50,50)) + 
       ggtitle("Histogram of differences")
     pl
   }
@@ -193,11 +204,12 @@ function(input, output) {
     fn <- attr(di, which = "name")
     paste0(
       "File name: ", fn, "\n\n",
-      "Number of samples: ", nrow(di), "\n",
+      "Number of ISR pairs: ", nrow(di), "\n",
+      "Percent of ISR pairs with %difference within ±20%: ",round(100*mean(abs(di$diff) < 20),2), "\n",
       "The most different sample: ", which.max(abs(di$diff)), "\n",
-      "The largest absolute difference: ", signif(max(abs(di$diff)), 2), "% \n",
-      "Fraction of samples with difference < 20%: ", round(100*mean(abs(di$diff) < 20),2), "% \n",
-      "\nDate of the analysis: ", as.character(Sys.Date()), " \n"
+      "The largest positive difference: ", signif(max(c(di$diff,0)), 2), "% \n",
+      "The largest negative difference: ", signif(min(c(di$diff,0)), 2), "% \n",
+      "\nDate of the visualisation: ", as.character(Sys.Date()), " \n"
     )
   }
 
