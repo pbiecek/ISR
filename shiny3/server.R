@@ -31,7 +31,7 @@ theGGPlot <- function(di, whiskers=TRUE, onX = "Number", unit = "ng/mL", logx=FA
   if (smooth)
     pl <- pl + geom_smooth(se=FALSE, color="blue1", group=1, size=2,method.args=list(degree = 1), span=0.5, method="loess")
   if (showex) {
-    di2 <- di[c(which.min(di$diff), which.max(di$diff)),]
+    di2 <- di[c(which(di$diff == min(di$diff)), which(max(di$diff) == di$diff)),]
     pl <- pl + geom_text(data=di2, aes(label=Number), color="red2", group=1, vjust=c(1.5,-0.5))
   }
 
@@ -127,9 +127,11 @@ function(input, output) {
        pl3 <- theGGPlot(di, whiskers = input$whiskers, onX="Initial_Value", unit = input$unit, logx = input$logx, smooth = input$smooth, bland=input$bland, showex = input$showex)
        pl4 <- prepareGgPlotHist(di)
        pl5 <- prepareGgPlotDiffECDF(di)
-       desc <- paste0(prepareDesc(di), "\n\nReport generated with ISRgenerator\nhttp://_more_info_here_")
+       desc <- paste0(prepareDesc2(di), "\n\nReport generated with ISRgenerator\nhttp://_more_info_here_")
        pl6 <- textGrob(desc,gp=gpar(fontsize=16)) #, hjust=0, just=0
-       print(grid.arrange(pl2, pl3, pl4, pl5, pl1, pl6, ncol=2, top =textGrob( "Incurred Sample Reanalysis Report\n ",gp=gpar(fontsize=40,font=3))))
+#       print(grid.arrange(pl2, pl3, pl4, pl5, pl1, pl6, ncol=2, top =textGrob( "Incurred Sample Reanalysis Report\n ",gp=gpar(fontsize=40,font=3))))
+#       print(grid.arrange(pl3, pl4, pl2, pl1, pl3, pl6, ncol=2, top =textGrob( "Incurred Sample Reanalysis Report\n ",gp=gpar(fontsize=40,font=3))))
+       print(grid.arrange(pl3, pl1, pl2, pl5, pl4, pl6, ncol=2, top =textGrob( "Incurred Sample Reanalysis Report\n ",gp=gpar(fontsize=40,font=3))))
      }
      dev.off()
    }
@@ -210,6 +212,18 @@ function(input, output) {
     )
   }
 
+  prepareDesc2 <- function(di) {
+    fn <- attr(di, which = "name")
+    paste0(
+      "File name: ", fn, "\n\n",
+      "Number of ISR pairs: ", nrow(di), "\n",
+      "Percent of ISR pairs with %difference within ±20%: ",round(100*mean(abs(di$diff) < 20),1), "\n",
+      "The largest positive difference: ", signif(max(c(di$diff,0)), 2), "%\n(sample No. ",which.max(di$diff),")\n",
+      "The largest negative difference: ", signif(min(c(di$diff,0)), 2), "%\n(sample No. ",which.min(di$diff),")\n",
+      "\nDate of the visualisation: ", as.character(Sys.Date()), ""
+    )
+  }
+  
   output$textSummary <- renderPrint({
     di <- dataInput()
     if (is.null(di)) return(cat(""))
