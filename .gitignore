@@ -2,3 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
+/docs/*
+/excel/*
+*dcf
+shiny3/packrat/*
+df_sample.rda
