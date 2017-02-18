@@ -3,7 +3,7 @@ library("rbokeh")
 
 fluidPage(
   fluidRow(class = "myRow1",
-    column(width = 4, h2("Incurred Sample Reanalysis"), p("Link to the article, contact email")),
+    column(width = 4, h2("Incurred Sample Reanalysis"),p("Link to the article, contact email"), a("Something is not working as expected? Report an issue", href="https://github.com/pbiecek/ISR/issues")),
     column(width = 4,
            checkboxInput("button",label = "Example data"),
            fileInput('file1', 'Or upload your data in XLSX or CSV file',
