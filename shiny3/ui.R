@@ -3,15 +3,19 @@ library("rbokeh")
 
 fluidPage(
   fluidRow(class = "myRow1",
-    column(width = 4, h2("Incurred Sample Reanalysis"),p("Link to the article, contact email"), a("Something is not working as expected? Report an issue", href="https://github.com/pbiecek/ISR/issues")),
+    column(width = 4, 
+           h2("Incurred Sample Reanalysis"),
+           p("Link to the article"), 
+           p("Contact email: p.rudzki(at)ifarm.eu"),
+           a("Something is not working as expected? Report an issue", href="https://github.com/pbiecek/ISR/issues")),
     column(width = 4,
-           checkboxInput("button",label = "Example data"),
-           fileInput('file1', 'Or upload your data in XLSX or CSV file',
+           fileInput('file1', 'Upload your data in XLSX file',
                      accept=c('.csv', 'application/xlsx',
                               'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                               '.xlsx')),
-           br(),
-           downloadLink('downloadData', 'Download the onepager')
+           checkboxInput("button",label = "Or use the example data set"),
+           a("Download a template input file [XLSX]", href="ISR_template.xlsx"),br(),
+           downloadLink('downloadData', 'Download results as the ISR_One_Page_Report')
            ),
     column(width = 2,
            p("Other options:"),

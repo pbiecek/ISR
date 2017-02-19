@@ -20,7 +20,7 @@ theGGPlot <- function(di, whiskers=TRUE, onX = "Number", unit = "ng/mL", logx=FA
     pl <- pl +
       geom_linerange(data=di[abs(di$diff) > 20,], aes_string(x=onX, ymin="diff", ymax="diffSign", color="absDiff"))
   pl <- pl +
-    geom_point() + theme_bw() +
+    geom_point(data=di) + theme_bw() +
     geom_hline(yintercept=0, linetype=2) +
     geom_hline(yintercept=c(20,-20)) +
     scale_y_continuous(breaks = c(seq(-200,200,20)), name="%difference",
@@ -32,12 +32,13 @@ theGGPlot <- function(di, whiskers=TRUE, onX = "Number", unit = "ng/mL", logx=FA
     pl <- pl + geom_smooth(se=FALSE, color="blue1", group=1, size=2,method.args=list(degree = 1), span=0.5, method="loess")
   if (showex) {
     di2 <- di[c(which(di$diff == min(di$diff)), which(max(di$diff) == di$diff)),]
-    pl <- pl + geom_text(data=di2, aes(label=Number), color="red2", group=1, vjust=c(1.5,-0.5))
+    di2$vjust <- ifelse(di2$diff == min(di2$diff), 1.5, -0.5)
+    pl <- pl + geom_text(data=di2, aes(label=Number, color=absDiff), group=1, vjust=di2$vjust)
   }
 
   if (onX == "Number") {
     pl <- pl + scale_x_continuous(expand = c(0,0), limits = c(0,1.2*max(di$Number))) +
-      xlab("sample number") + ggtitle("Difference vs. Sample Number")
+      xlab("sample number") + ggtitle("Difference vs. sample number")
   } else {
     # input$bland
     if (logx) {
@@ -46,9 +47,9 @@ theGGPlot <- function(di, whiskers=TRUE, onX = "Number", unit = "ng/mL", logx=FA
       pl <- pl + scale_x_continuous(expand = c(0,0), limits = c(0,1.1*max(di$Initial_Value)))
     }
     if (!bland) {
-      pl <- pl + xlab(paste0("mean value [",unit,"]")) + ggtitle("Difference vs. Mean Value")
+      pl <- pl + xlab(paste0("mean value [",unit,"]")) + ggtitle("Difference vs. mean value")
     } else {
-      pl <- pl + xlab(paste0("initial value [",unit,"]")) + ggtitle("Difference vs. Initial Value")
+      pl <- pl + xlab(paste0("initial value [",unit,"]")) + ggtitle("Difference vs. initial value")
     }
   }
   pl
@@ -64,11 +65,16 @@ function(input, output) {
     inFile <- input$file1
     if (is.null(inFile))
       return(NULL)
-    df <- read.xlsx(inFile$datapath, "Arkusz1", startRow=3)
+#    df <- read.xlsx(inFile$datapath, "Arkusz1", startRow=3)
+    df <- read.xlsx(inFile$datapath, 1)
+    df <- na.omit(df[,1:3])
+    df$diff <- 200*(df[,3]-df[,2])/(df[,3]+df[,2])
+    df$ISR <- 100*(cumsum(abs(df$diff) < 20) / seq_along(df$diff))
+    
     colnames(df) <- c(
-      "Number",	"Subject", "Period", "Sampling_Point", "Initial_Value",	"Repeat_Value",	"diff",	"ISR"
+      "Number",	"Initial_Value",	"Repeat_Value",	"diff",	"ISR"
     )
-    df <- na.omit(df[,c(1,5:8)])
+    df <- na.omit(df[,c(1:5)])
     df$absDiff <- abs(df$diff) > 20
     df$diffSign <- 20*sign(df$diff)
     df$Average <- (df$Initial_Value + df$Repeat_Value)/2
@@ -124,7 +130,7 @@ function(input, output) {
      } else {
        pl1 <- prepareGgPlotISR(di, input$ciband)
        pl2 <- theGGPlot(di, whiskers = input$whiskers, smooth = input$smooth, showex = input$showex)
-       pl3 <- theGGPlot(di, whiskers = input$whiskers, onX="Initial_Value", unit = input$unit, logx = input$logx, smooth = input$smooth, bland=input$bland, showex = input$showex)
+       pl3 <- theGGPlot(di, whiskers = input$whiskers, onX="Initial_Value", unit = input$unit, logx = input$logx, smooth = input$smooth, bland=input$bland, showex = FALSE)
        pl4 <- prepareGgPlotHist(di)
        pl5 <- prepareGgPlotDiffECDF(di)
        desc <- paste0(prepareDesc2(di), "\n\nReport generated with ISRgenerator\nhttp://_more_info_here_")
@@ -162,7 +168,7 @@ function(input, output) {
       geom_text(x=max(di$Number), y=100*frac, label=paste(round(100*frac,1), "%"), vjust=2*frac - 1, hjust=-0.1, color="red", size=6) +
       geom_hline(yintercept=66.6, linetype=2) +
       scale_y_continuous(limits=c(0,100), expand = c(0,0), breaks = round(100*c(seq(0,1,.2),0.666),0), name=yname) +
-      scale_x_continuous(expand = c(0,0), limits = c(0,1.2*max(di$Number)), name="Sample Number") +
+      scale_x_continuous(expand = c(0,0), limits = c(0,1.2*max(di$Number)), name="sample number") +
       theme(legend.position="none", text=element_text(size=15))+
       ggtitle("Cummulative ISR plot")
     pl
@@ -205,7 +211,7 @@ function(input, output) {
     paste0(
       "File name:\n      ", fn, "\n\n",
       "Number of ISR pairs:\n      ", nrow(di), "\n",
-      "Percent of ISR pairs with %difference within ±20%:\n      ",round(100*mean(abs(di$diff) < 20),1), "\n",
+      "ISR pairs with %difference within ±20%:\n      ",round(100*mean(abs(di$diff) < 20),1), "%\n",
       "The largest positive difference:\n      ", signif(max(c(di$diff,0)), 2), "% (sample No. ",which.max(di$diff),")\n",
       "The largest negative difference:\n      ", signif(min(c(di$diff,0)), 2), "% (sample No. ",which.min(di$diff),")\n",
       "\nDate of the visualisation:\n      ", as.character(Sys.Date()), " \n"
@@ -217,7 +223,7 @@ function(input, output) {
     paste0(
       "File name: ", fn, "\n\n",
       "Number of ISR pairs: ", nrow(di), "\n",
-      "Percent of ISR pairs with %difference within ±20%: ",round(100*mean(abs(di$diff) < 20),1), "\n",
+      "ISR pairs with %difference within ±20%: ",round(100*mean(abs(di$diff) < 20),1), "\n",
       "The largest positive difference: ", signif(max(c(di$diff,0)), 2), "%\n(sample No. ",which.max(di$diff),")\n",
       "The largest negative difference: ", signif(min(c(di$diff,0)), 2), "%\n(sample No. ",which.min(di$diff),")\n",
       "\nDate of the visualisation: ", as.character(Sys.Date()), ""
